@@ -23,19 +23,20 @@
 #include "lprnet.h"
 #include "image_utils.h"
 #include "file_utils.h"
+#include "opencv2/opencv.hpp"
+#include "opencv2/videoio.hpp"
 
 /*-------------------------------------------
                   Main Function
 -------------------------------------------*/
 int main(int argc, char** argv)
 {
-    if (argc != 3) {
-        printf("%s <model_path> <image_path>\n", argv[0]);
+    if (argc != 2) {
+        printf("%s <model_path>\n", argv[0]);
         return -1;
     }
 
     const char* model_path = argv[1];
-    const char* image_path = argv[2];
 
 
     int ret;
@@ -48,23 +49,51 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    image_buffer_t src_image;
-    memset(&src_image, 0, sizeof(image_buffer_t));
-    ret = read_image(image_path, &src_image);
-    if (ret != 0) {
-        printf("read image fail! ret=%d image_path=%s\n", ret, image_path);
+    // conectémonos a un stream RTSP mediante OpenCV
+    cv::VideoCapture cap("rtsp://camaras:Melosilla123.@192.168.1.108:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif");
+    if (!cap.isOpened()) {
+        std::cout << "Error al abrir el stream RTSP" << std::endl;
         return -1;
     }
 
+    int i = 0;
     lprnet_result result;
-
-    ret = inference_lprnet_model(&rknn_app_ctx, &src_image, &result);
-    if (ret != 0) {
-        printf("init_lprnet_model fail! ret=%d\n", ret);
-        goto out;
+    result.plate_name = "";
+    bool hecho = false;
+    while (hecho == false) {
+        cv::Mat frame;
+        cap >> frame;
+        if (frame.empty()) {
+            std::cout << "Error al capturar el frame" << std::endl;
+            break;
+        }
+        std::cout << "frame " << i << std::endl;
+        ret = inference_lprnet_model_mat(&rknn_app_ctx, &frame, &result);
+        if (ret != 0) {
+            printf("inference_lprnet_model fail! ret=%d\n", ret);
+            goto out;
+        }
+        i++;
     }
 
-    std::cout << "车牌识别结果: " << result.plate_name << std::endl;
+    // image_buffer_t src_image;
+    // while (i < 10) {
+    //     memset(&src_image, 0, sizeof(image_buffer_t));
+    //     ret = read_image(image_path, &src_image);
+    //     if (ret != 0) {
+    //         printf("read image fail! ret=%d image_path=%s\n", ret, image_path);
+    //         return -1;
+    //     }
+
+    //     ret = inference_lprnet_model(&rknn_app_ctx, &src_image, &result);
+    //     if (ret != 0) {
+    //         printf("inference_lprnet_model fail! ret=%d\n", ret);
+    //         goto out;
+    //     }
+
+    //     std::cout << "resultado: " << result.plate_name << std::endl;
+    //     i++;
+    // }
 
 out:
     ret = release_lprnet_model(&rknn_app_ctx);
@@ -72,9 +101,9 @@ out:
         printf("release_lprnet_model fail! ret=%d\n", ret);
     }
 
-    if (src_image.virt_addr != NULL) {
-        free(src_image.virt_addr);
-    }
+    // if (src_image.virt_addr != NULL) {
+    //     free(src_image.virt_addr);
+    // }
 
     return 0;
 }

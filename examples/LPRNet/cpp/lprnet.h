@@ -7,6 +7,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include "opencv2/opencv.hpp"
 
 typedef struct
 {
@@ -40,5 +41,5 @@ int init_lprnet_model(const char *model_path, rknn_app_context_t *app_ctx);
 int release_lprnet_model(rknn_app_context_t *app_ctx);
 
 int inference_lprnet_model(rknn_app_context_t *app_ctx, image_buffer_t *img, lprnet_result *out_result);
-
+int inference_lprnet_model_mat(rknn_app_context_t *app_ctx, cv::Mat *img, lprnet_result *out_result);
 #endif //_RKNN_DEMO_LPRNET_H_

@@ -226,3 +226,101 @@ int inference_lprnet_model(rknn_app_context_t *app_ctx, image_buffer_t *src_img,
 
     return ret;
 }
+
+int inference_lprnet_model_mat(rknn_app_context_t *app_ctx, cv::Mat *src_img, lprnet_result *out_result)
+{
+    int ret;
+    rknn_input inputs[1];
+    rknn_output outputs[1];
+
+    memset(inputs, 0, sizeof(inputs));
+    memset(outputs, 0, sizeof(outputs));
+
+    // Pre Process
+    // cv::Mat img_ori = cv::Mat(src_img->height, src_img->width, CV_8UC3, (uint8_t *)src_img->virt_addr);
+    cv::Mat img_ori = *src_img;
+    cv::Mat img_pre;
+    // cv::resize(img_ori, img_pre, cv::Size(94, 24));
+    cv::cvtColor(img_ori, img_pre, cv::COLOR_RGB2BGR);
+
+    // Set Input Data
+    inputs[0].index = 0;
+    inputs[0].type = RKNN_TENSOR_UINT8;
+    inputs[0].fmt = RKNN_TENSOR_NHWC;
+    inputs[0].size = app_ctx->model_width * app_ctx->model_height * app_ctx->model_channel;
+    inputs[0].buf = img_pre.data;
+
+    ret = rknn_inputs_set(app_ctx->rknn_ctx, 1, inputs);
+    if (ret < 0)
+    {
+        printf("rknn_input_set fail! ret=%d\n", ret);
+        return -1;
+    }
+
+    // Run
+    printf("rknn_run\n");
+    ret = rknn_run(app_ctx->rknn_ctx, nullptr);
+    if (ret < 0)
+    {
+        printf("rknn_run fail! ret=%d\n", ret);
+        return -1;
+    }
+
+    // Get Output
+    outputs[0].want_float = 1;
+    ret = rknn_outputs_get(app_ctx->rknn_ctx, 1, outputs, NULL);
+    if (ret < 0)
+    {
+        printf("rknn_outputs_get fail! ret=%d\n", ret);
+        return ret;
+    }
+
+    // Post Process
+    std::vector<int> no_repeat_blank_label{};
+    float prebs[18];
+    int pre_c;
+    for (int x = 0; x < 18; x++) // Traverse 18 license plate positions
+    {
+        float *ptr = (float *)outputs[0].buf;
+        float preb[68];
+        for (int y = 0; y < 68; y++) // Traverse 68 string positions
+        {
+            preb[y] = ptr[x];
+            ptr += 18;
+        }
+        int max_num_index = std::max_element(preb, preb + 68) - preb;
+        prebs[x] = max_num_index;
+    }
+
+    // Remove duplicates and blanks
+    pre_c = prebs[0];
+    if (pre_c != 67)
+    {
+        no_repeat_blank_label.push_back(pre_c);
+    }
+    for (int value : prebs)
+    {
+        if (value == 67 or value == pre_c)
+        {
+            if (value == 67 or value == pre_c)
+            {
+                pre_c = value;
+            }
+            continue;
+        }
+        no_repeat_blank_label.push_back(value);
+        pre_c = value;
+    }
+
+    // The license plate is converted into a string according to the dictionary
+    out_result->plate_name.clear();
+    for (int hh : no_repeat_blank_label)
+    {
+        out_result->plate_name += plate_code[hh];
+    }
+
+    // Remeber to release rknn output
+    rknn_outputs_release(app_ctx->rknn_ctx, 1, outputs);
+
+    return ret;
+}

@@ -38,7 +38,7 @@ report.yml
 
 developer_conference/
 internal_data/
-.vscode/
+#.vscode/
 model_cvt
 datasets/COCO/try_load.py
 common/utils/run_and_gen_result.py
