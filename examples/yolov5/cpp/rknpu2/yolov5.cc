@@ -291,7 +291,7 @@ int inference_yolov5_model_mat(rknn_app_context_t *app_ctx, cv::Mat *img, object
 
     // // letterbox
     cv::Size newShape = cv::Size(app_ctx->model_width, app_ctx->model_height);
-    letterbox(img_ori, img_pre, newShape, cv::Scalar(bg_color), false,false, false,0);
+    letterbox(img_ori, img_pre, newShape, cv::Scalar(bg_color), false,false, false,0, letter_box);
 
     // Set Input Data
     inputs[0].index = 0;

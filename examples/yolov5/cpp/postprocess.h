@@ -38,7 +38,8 @@ void letterbox(const cv::Mat& image,
     cv::Scalar_<double> color,
     bool auto_,
     bool scaleFill,
-    bool scaleUp, int stride
+    bool scaleUp, int stride,
+    letterbox_t& letter_box
 );
 void deinitPostProcess();
 #endif //_RKNN_YOLOV5_DEMO_POSTPROCESS_H_

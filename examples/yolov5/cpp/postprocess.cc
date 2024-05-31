@@ -564,7 +564,7 @@ void letterbox(const cv::Mat& image,
     cv::Scalar_<double> color,
     bool auto_,
     bool scaleFill,
-    bool scaleUp, int stride
+    bool scaleUp, int stride, letterbox_t& letter_box
 ) {
     cv::Size shape = image.size();
     float r = std::min(static_cast<float>(newShape.height) / static_cast<float>(shape.height),
@@ -596,6 +596,10 @@ void letterbox(const cv::Mat& image,
 
     dw /= 2.0f;
     dh /= 2.0f;
+
+    letter_box.x_pad = dw;
+    letter_box.y_pad = dh;
+    letter_box.scale = r;
 
     //cv::Mat outImage;
     if (shape.width != newUnpad[0] || shape.height != newUnpad[1])
