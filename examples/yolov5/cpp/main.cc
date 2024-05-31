@@ -19,11 +19,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <iostream>
 
 #include "yolov5.h"
 #include "image_utils.h"
 #include "file_utils.h"
 #include "image_drawing.h"
+#include "opencv2/opencv.hpp"
+#include "opencv2/videoio.hpp"
 
 #if defined(RV1106_1103) 
     #include "dma_alloc.hpp"
@@ -41,7 +44,14 @@ int main(int argc, char **argv)
     }
 
     const char *model_path = argv[1];
-    const char *image_path = argv[2];
+//    const char *image_path = argv[2];
+
+    int i = 0;
+    bool hecho = false;
+    cv::VideoCapture cap("rtsp://camaras:Melosilla123.@192.168.1.108:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif");
+    object_detect_result_list od_results;
+
+    image_buffer_t src_image;
 
     int ret;
     rknn_app_context_t rknn_app_ctx;
@@ -56,9 +66,8 @@ int main(int argc, char **argv)
         goto out;
     }
 
-    image_buffer_t src_image;
-    memset(&src_image, 0, sizeof(image_buffer_t));
-    ret = read_image(image_path, &src_image);
+//    memset(&src_image, 0, sizeof(image_buffer_t));
+//    ret = read_image(image_path, &src_image);
 
 #if defined(RV1106_1103) 
     //RV1106 rga requires that input and output bufs are memory allocated by dma
@@ -72,42 +81,97 @@ int main(int argc, char **argv)
     rknn_app_ctx.img_dma_buf.size = src_image.size;
 #endif
 
-    if (ret != 0)
-    {
-        printf("read image fail! ret=%d image_path=%s\n", ret, image_path);
-        goto out;
+    // if (ret != 0)
+    // {
+    //     printf("read image fail! ret=%d image_path=%s\n", ret, image_path);
+    //     goto out;
+    // }
+
+    // conectémonos a un stream RTSP mediante OpenCV
+    
+    if (!cap.isOpened()) {
+        std::cout << "Error al abrir el stream RTSP" << std::endl;
+        return -1;
     }
 
-    object_detect_result_list od_results;
+//    ret = inference_yolov5_model(&rknn_app_ctx, &src_image, &od_results);
 
-    ret = inference_yolov5_model(&rknn_app_ctx, &src_image, &od_results);
-    if (ret != 0)
-    {
-        printf("init_yolov5_model fail! ret=%d\n", ret);
-        goto out;
+    while (hecho == false) {
+        cv::Mat frame;
+        cap >> frame;
+        if (frame.empty()) {
+            std::cout << "Error al capturar el frame" << std::endl;
+            break;
+        }
+
+        if (i % 100 == 0)
+            std::cout << "frame " << i << std::endl;
+
+        ret = inference_yolov5_model_mat(&rknn_app_ctx, &frame, &od_results);
+        if (ret != 0)
+        {
+            printf("init_yolov5_model fail! ret=%d\n", ret);
+            goto out;
+        }
+
+        // 画框和概率
+        if (od_results.count > 0)
+        {
+            char text[256];
+
+            std::cout << "resultados: " << od_results.count << std::endl;
+
+            for (int i = 0; i < od_results.count; i++)
+            {
+                object_detect_result *det_result = &(od_results.results[i]);
+                std::cout << coco_cls_to_name(det_result->cls_id) << "," << det_result->box.left << " " << det_result->box.top << " " << det_result->box.right << " " << det_result->box.bottom << ", " << det_result->prop << std::endl;
+                // printf("%s @ (%d %d %d %d) %.3f\n", coco_cls_to_name(det_result->cls_id),
+                //     det_result->box.left, det_result->box.top,
+                //     det_result->box.right, det_result->box.bottom,
+                //     det_result->prop);
+                // int x1 = det_result->box.left;
+                // int y1 = det_result->box.top;
+                // int x2 = det_result->box.right;
+                // int y2 = det_result->box.bottom;
+
+                // draw_rectangle(&src_image, x1, y1, x2 - x1, y2 - y1, COLOR_BLUE, 3);
+
+                // sprintf(text, "%s %.1f%%", coco_cls_to_name(det_result->cls_id), det_result->prop * 100);
+                // draw_text(&src_image, text, x1, y1 - 20, COLOR_RED, 10);
+            }
+        }
+
+        i++;
     }
 
-    // 画框和概率
-    char text[256];
-    for (int i = 0; i < od_results.count; i++)
-    {
-        object_detect_result *det_result = &(od_results.results[i]);
-        printf("%s @ (%d %d %d %d) %.3f\n", coco_cls_to_name(det_result->cls_id),
-               det_result->box.left, det_result->box.top,
-               det_result->box.right, det_result->box.bottom,
-               det_result->prop);
-        int x1 = det_result->box.left;
-        int y1 = det_result->box.top;
-        int x2 = det_result->box.right;
-        int y2 = det_result->box.bottom;
+    // ret = inference_yolov5_model(&rknn_app_ctx, &src_image, &od_results);
+    // if (ret != 0)
+    // {
+    //     printf("init_yolov5_model fail! ret=%d\n", ret);
+    //     goto out;
+    // }
 
-        draw_rectangle(&src_image, x1, y1, x2 - x1, y2 - y1, COLOR_BLUE, 3);
+    // // 画框和概率
+    // char text[256];
+    // for (int i = 0; i < od_results.count; i++)
+    // {
+    //     object_detect_result *det_result = &(od_results.results[i]);
+    //     printf("%s @ (%d %d %d %d) %.3f\n", coco_cls_to_name(det_result->cls_id),
+    //            det_result->box.left, det_result->box.top,
+    //            det_result->box.right, det_result->box.bottom,
+    //            det_result->prop);
+    //     int x1 = det_result->box.left;
+    //     int y1 = det_result->box.top;
+    //     int x2 = det_result->box.right;
+    //     int y2 = det_result->box.bottom;
 
-        sprintf(text, "%s %.1f%%", coco_cls_to_name(det_result->cls_id), det_result->prop * 100);
-        draw_text(&src_image, text, x1, y1 - 20, COLOR_RED, 10);
-    }
+    //     draw_rectangle(&src_image, x1, y1, x2 - x1, y2 - y1, COLOR_BLUE, 3);
 
-    write_image("out.png", &src_image);
+    //     sprintf(text, "%s %.1f%%", coco_cls_to_name(det_result->cls_id), det_result->prop * 100);
+    //     draw_text(&src_image, text, x1, y1 - 20, COLOR_RED, 10);
+    // }
+
+    // write_image("out.png", &src_image);
 
 out:
     deinit_post_process();

@@ -13,6 +13,16 @@
             "cwd": "${workspaceRoot}/build/build_rknn_LPRNet_demo_rk3588_linux_aarch64_Debug/",
             "valuesFormatting": "parseText",
             "preLaunchTask": "build"
+        },
+        {
+            "type": "gdb",
+            "request": "launch",
+            "name": "Launch yolov5",
+            "target": "${workspaceRoot}/install/rk3588_linux_aarch64/rknn_yolov5_demo/rknn_yolov5_demo",
+            "arguments": "${workspaceRoot}/install/rk3588_linux_aarch64/rknn_yolov5_demo/model/yolov5.rknn ${workspaceRoot}/install/rk3588_linux_aarch64/rknn_yolov5_demo/model/bus.jpg",
+            "cwd": "${workspaceRoot}/install/rk3588_linux_aarch64/rknn_yolov5_demo/",
+            "valuesFormatting": "parseText",
+            "preLaunchTask": "buildyolo"
         }
     ]
 }

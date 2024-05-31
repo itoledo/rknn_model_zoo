@@ -9,6 +9,22 @@ if (ENABLE_ASAN)
 	set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
 endif ()
 
+#opencv
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../3rdparty/ 3rdparty.out)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../utils/ utils.out)
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+message(STATUS "64bit")
+set (TARGET_LIB_ARCH lib64)
+else()
+message(STATUS "32bit")
+set (TARGET_LIB_ARCH lib)
+endif()
+# set(OpenCV_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../3rdparty/opencv/opencv-linux-aarch64/share/OpenCV)
+find_package(OpenCV REQUIRED core videoio)
+message(STATUS OpenCV_DIR=${OpenCV_DIR})
+message(STATUS OpenCV_LIBS=${OpenCV_LIBS})
+
 set(rknpu_yolov5_file rknpu2/yolov5.cc)
 if (TARGET_SOC STREQUAL "rv1106" OR TARGET_SOC STREQUAL "rv1103")
     add_definitions(-DRV1106_1103)
@@ -19,9 +35,6 @@ elseif(TARGET_SOC STREQUAL "rk1808" OR TARGET_SOC STREQUAL "rv1109" OR TARGET_SO
     add_definitions(-DRKNPU1)
     set(rknpu_yolov5_file rknpu1/yolov5.cc)
 endif()
-
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../3rdparty/ 3rdparty.out)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../utils/ utils.out)
 
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 
@@ -39,6 +52,7 @@ target_link_libraries(${PROJECT_NAME}
     fileutils
     imagedrawing    
     ${LIBRKNNRT}
+    ${OpenCV_LIBS}
     dl
 )
 

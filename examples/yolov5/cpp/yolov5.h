@@ -18,6 +18,8 @@
 
 #include "rknn_api.h"
 #include "common.h"
+#include "opencv2/opencv.hpp"
+
 #if defined(RV1106_1103) 
     typedef struct {
         char *dma_buf_virt_addr;
@@ -51,5 +53,6 @@ int init_yolov5_model(const char* model_path, rknn_app_context_t* app_ctx);
 int release_yolov5_model(rknn_app_context_t* app_ctx);
 
 int inference_yolov5_model(rknn_app_context_t* app_ctx, image_buffer_t* img, object_detect_result_list* od_results);
+int inference_yolov5_model_mat(rknn_app_context_t* app_ctx, cv::Mat* img, object_detect_result_list* od_results);
 
 #endif //_RKNN_DEMO_YOLOV5_H_
