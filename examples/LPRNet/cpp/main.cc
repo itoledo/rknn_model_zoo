@@ -24,56 +24,57 @@
 #include "image_utils.h"
 #include "file_utils.h"
 #include "opencv2/opencv.hpp"
-#include "opencv2/videoio.hpp"
+
+static void image_preprocess(image_buffer_t src_image)
+{
+    cv::Mat img_ori = cv::Mat(src_image.height, src_image.width, CV_8UC3, (uint8_t *)src_image.virt_addr);
+    cv::resize(img_ori, img_ori, cv::Size(MODEL_WIDTH, MODEL_HEIGHT));
+    cv::cvtColor(img_ori, img_ori, cv::COLOR_RGB2BGR);
+    src_image.virt_addr = img_ori.data;
+}
 
 /*-------------------------------------------
                   Main Function
 -------------------------------------------*/
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
-    if (argc != 2) {
-        printf("%s <model_path>\n", argv[0]);
+    if (argc != 3)
+    {
+        printf("%s <model_path> <image_path>\n", argv[0]);
         return -1;
     }
 
-    const char* model_path = argv[1];
-
+    const char *model_path = argv[1];
+    const char *image_path = argv[2];
 
     int ret;
     rknn_app_context_t rknn_app_ctx;
     memset(&rknn_app_ctx, 0, sizeof(rknn_app_context_t));
+    image_buffer_t src_image;
+    memset(&src_image, 0, sizeof(image_buffer_t));
+    lprnet_result result;
 
     ret = init_lprnet_model(model_path, &rknn_app_ctx);
-    if (ret != 0) {
+    if (ret != 0)
+    {
         printf("init_lprnet_model fail! ret=%d model_path=%s\n", ret, model_path);
-        return -1;
+        goto out;
     }
 
-    // conectémonos a un stream RTSP mediante OpenCV
-    cv::VideoCapture cap("rtsp://camaras:Melosilla123.@192.168.1.108:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif");
-    if (!cap.isOpened()) {
-        std::cout << "Error al abrir el stream RTSP" << std::endl;
-        return -1;
+    ret = read_image(image_path, &src_image);
+    if (ret != 0)
+    {
+        printf("read image fail! ret=%d image_path=%s\n", ret, image_path);
+        goto out;
     }
+    // Image preprocessing
+    image_preprocess(src_image);
 
-    int i = 0;
-    lprnet_result result;
-    result.plate_name = "";
-    bool hecho = false;
-    while (hecho == false) {
-        cv::Mat frame;
-        cap >> frame;
-        if (frame.empty()) {
-            std::cout << "Error al capturar el frame" << std::endl;
-            break;
-        }
-        std::cout << "frame " << i << std::endl;
-        ret = inference_lprnet_model_mat(&rknn_app_ctx, &frame, &result);
-        if (ret != 0) {
-            printf("inference_lprnet_model fail! ret=%d\n", ret);
-            goto out;
-        }
-        i++;
+    ret = inference_lprnet_model(&rknn_app_ctx, &src_image, &result);
+    if (ret != 0)
+    {
+        printf("init_lprnet_model fail! ret=%d\n", ret);
+        goto out;
     }
 
     // image_buffer_t src_image;
@@ -97,13 +98,20 @@ int main(int argc, char** argv)
 
 out:
     ret = release_lprnet_model(&rknn_app_ctx);
-    if (ret != 0) {
+    if (ret != 0)
+    {
         printf("release_lprnet_model fail! ret=%d\n", ret);
     }
 
-    // if (src_image.virt_addr != NULL) {
-    //     free(src_image.virt_addr);
-    // }
+    if (src_image.virt_addr != NULL)
+    {
+#if defined(RV1106_1103)
+        dma_buf_free(rknn_app_ctx.img_dma_buf.size, &rknn_app_ctx.img_dma_buf.dma_buf_fd,
+                     rknn_app_ctx.img_dma_buf.dma_buf_virt_addr);
+#else
+        free(src_image.virt_addr);
+#endif
+    }
 
     return 0;
 }
