@@ -23,6 +23,16 @@
             "cwd": "${workspaceRoot}/install/rk3588_linux_aarch64/rknn_yolov5_demo/",
             "valuesFormatting": "parseText",
             "preLaunchTask": "buildyolo"
+        },
+        {
+            "type": "gdb",
+            "request": "launch",
+            "name": "Launch yolov8",
+            "target": "${workspaceRoot}/install/rk3588_linux_aarch64/rknn_yolov8_demo/rknn_yolov8_demo",
+            "arguments": "${workspaceRoot}/install/rk3588_linux_aarch64/rknn_yolov8_demo/model/yolov8.rknn ${workspaceRoot}/install/rk3588_linux_aarch64/rknn_yolov8_demo/model/bus.jpg",
+            "cwd": "${workspaceRoot}/install/rk3588_linux_aarch64/rknn_yolov8_demo/",
+            "valuesFormatting": "parseText",
+            "preLaunchTask": "buildyolov8"
         }
     ]
 }

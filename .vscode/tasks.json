@@ -12,6 +12,11 @@
             "label": "buildyolo",
             "type": "shell",
             "command": "./build-linux.sh -t rk3588 -a aarch64 -d yolov5 -b Debug"
+        },
+        {
+            "label": "buildyolov8",
+            "type": "shell",
+            "command": "./build-linux.sh -t rk3588 -a aarch64 -d yolov8 -b Debug"
         }
 
     ]
